@@ -1,0 +1,302 @@
+<!doctype html>
+<html>
+<head>
+<LINK REL=STYLESHEET TYPE="text/css" HREF="lab5.css">
+<script language="javascript">
+//Space (box) states: -1=empty, 0='o', 1='x'
+var choice = ['o','x'];
+var gameArr = [-1,-1,-1,-1,-1,-1,-1,-1,-1];
+gameArr[0] = get_url_parameter('a');
+gameArr[1] = get_url_parameter('b');
+gameArr[2] = get_url_parameter('c');
+gameArr[3] = get_url_parameter('d');
+gameArr[4] = get_url_parameter('e');
+gameArr[5] = get_url_parameter('f');
+gameArr[6] = get_url_parameter('g');
+gameArr[7] = get_url_parameter('h');
+gameArr[8] = get_url_parameter('i');
+var stillPlay = true;
+var winningSet = [0,1,2];
+var goesFirst = 1;
+var alpha = 0;
+var intvl="";
+
+function get_url_parameter( param ){
+	var r1 = "[\\?&]"+param+"=([^&#]*)";
+	var r2 = new RegExp( r1 );
+	var r3 = r2.exec( window.location.href );
+	if( r3 == null ){ 
+		return -1;
+	}else{ 
+		return r3[1];
+	}
+}
+
+function computer_move(a,b,c,d,e,f,g,h,i){
+	window.location = "lab5.php?a="+a+"&b="+b+"&c="+c+"&d="+d+
+						"&e="+e+"&f="+f+"&g="+g+"&h="+h+"&i="+i;
+}
+
+function checkForWinner(){
+	//set up possible winning combinations
+	var c = [[0,1,2],[3,4,5],[6,7,8],[0,3,6],
+				[1,4,7],[2,5,8],[0,4,8],[2,4,6]];
+	// set up winner: -1=no winner, 0='o' wins, 1='x' wins
+	var winner = -1;
+	i=0;
+	//run through 8 combinations
+	while(winner == -1 && i < 8){
+		var i0 = gameArr[c[i][0]];
+		var i1 = gameArr[c[i][1]];
+		var i2 = gameArr[c[i][2]];
+		if(i0==i1 && i0==i2 && i0!=-1){
+			// winner is found
+			winner = gameArr[c[i][0]];
+			winningSet = [[c[i][0]],[c[i][1]],[c[i][2]]]
+			stillPlay=false;
+		}else{
+			//still no winner
+			i++;
+		}
+	}
+	// check if boxes are all filled with no winner	
+	if(winner==-1 && !contains(gameArr,-1)){stillPlay=false;}
+	// return -1 if still no winner
+	// and leave stillPlay true
+	return winner;
+}
+
+function getId(e){
+	// get and return the 'id' of the event
+	var targ;
+	if (!e){var e=window.event;}	
+	if (e.target){targ=e.target;}
+	else if(e.srcElement){targ=e.srcElement;}	
+	if (targ.nodeType==3){targ = targ.parentNode;} //defeat Safari bug
+	var tid;	
+	tid=targ.id;	
+	return tid;
+}
+
+function onDiv(e){
+	// on hover of canvas tag
+	alpha=1;
+	clearInterval(intvl);
+	//clearDiv(c);
+	var id = getId(e);
+	var str = "fader('"+id+"','here?')";
+	intvl = setInterval(str, 50);
+}
+
+function offDiv(e){
+	// on hover off of canvas tag
+	alpha=0;
+	clearInterval(intvl);
+	var id = getId(e);	
+	var c=document.getElementById(id);
+	clearDiv(c);
+}
+
+function fader(id, word){
+	var c=document.getElementById(id);
+	var cxt=c.getContext("2d");
+	alpha++;
+	//document.getElementById('by').innerHTML = alpha/30;	
+	var str = "rgba(255,255,255,"+alpha/30+")";
+	// fill with word 'here?'
+	cxt.font = "bold 26px sans-serif";
+	cxt.fillStyle = str;
+	cxt.textAlign = "center";
+	cxt.fillText(word, 50, 60);
+	if(alpha >= 20){clearInterval(intvl);}
+}
+
+function clickDiv(e){
+	// on click of one of the canvas' tags
+	var tid = getId(e);	
+	var c=document.getElementById(tid);
+	// clear canvas
+	alpha=0;
+	clearInterval(intvl);
+	clearDiv(c);
+	// get index (the number) of id value	
+	var ind = parseInt(tid.substring(3))-1;
+	// set array[index] to 1 (='x')
+	gameArr[ind] = 1;
+	// draw and check to see if there was a winner
+	drawCurrentState(checkForWinner());	
+	// computer's turn
+	compTurn();	
+	// check to see if there was a winner
+	drawCurrentState(checkForWinner());	
+}
+
+function compTurn(){	
+	if(stillPlay){
+		//Which number to change to an 'o'
+		var compMove = computer_move(gameArr[0],gameArr[1],
+				gameArr[2],gameArr[3],gameArr[4],gameArr[5],
+				gameArr[6],gameArr[7],gameArr[8]);
+		// if no winner found and 
+		// compMove was able to fill a box (ie. returned > -1)
+		// set array[compMove] to 1 (='o')
+		if(compMove>-1){
+			//if you get here the boxes are NOT filled
+			gameArr[compMove-1] = 0;
+		}
+	}
+	drawCurrentState(checkForWinner());	
+}
+
+function drawCurrentState(winner){
+	// draw after every move or new game
+	// draw after every move or new game
+	var retry = '<br '+'/'+'>try again? <a href="#" '+
+			'onclick="newGame(1)">you go 1st</a> or '+
+			'<a href="#" '+
+				'onclick="newGame(0)">computer goes 1st</a>';
+	if(winner == -1 && stillPlay){
+		// no winner has been found and some squares are empty
+		drawWithNoWinner();		
+	}else if(winner == -1 && !stillPlay){
+		// no winner has been found and squares are filled
+		document.getElementById('winner').innerHTML='wow!?! no winner' 
+			+ retry;
+		drawWithNoWinner();		
+	}else{
+		// a winner has been found b/c winner > -1
+		var who = 'sorry, but the computer always wins.';
+		if(winner==1){who='surprise! you beat the computer.'}
+		document.getElementById('winner').innerHTML=who + retry;
+		drawWithWinner(winner);
+	}
+}
+
+function drawWithNoWinner(){
+	for(i=1; i<=9; i++){
+		var cellSpace = 'col' + i;
+		var s = '';
+		var elmt = document.getElementById(cellSpace);
+		var cxt=elmt.getContext("2d");
+		var arrValue = gameArr[i-1];
+		// if square has been picked, turn off events
+		if(arrValue >= 0){
+			s=choice[arrValue];			
+			// clear events
+			changeMouseLis(elmt, 'off');
+		}else{
+			// if square has not been picked, turn on events
+			changeMouseLis(elmt, 'on');
+		}
+		// clear canvas
+		clearDiv(elmt);
+		//set style and fill with s (which may be '')
+		cxt.fillStyle = "#cccccc";
+		cxt.font = "bold 70px sans-serif";
+		cxt.fillText(s, 30, 70);
+	}	
+}
+
+function drawWithWinner(winner){
+	// winner was found but still need to draw the winning move		
+	for(i=1; i<=9; i++){
+		var cellSpace = 'col' + i;
+		var s = '';
+		var elmt = document.getElementById(cellSpace);
+		var cxt=elmt.getContext("2d");
+		var arrValue = gameArr[i-1];
+		// winner found, turn off all events
+		changeMouseLis(elmt, 'off');
+		if(arrValue >= 0){
+			//if 'x' or 'o', set letter
+			s=choice[arrValue];
+		}else{
+			//it is blank, so clear box
+			clearDiv(elmt);
+		}
+		// set style and fill with s (which may be '')
+		// but only if it was the last winning move
+		if((winner==0 && s=='o')||(winner==1 && s=='x')){
+			if(contains(winningSet,(i-1))){
+				cxt.fillStyle = "#ff3333";
+			}else{
+			cxt.fillStyle = "#cccccc";
+			}
+			cxt.font = "bold 70px sans-serif";
+			cxt.fillText(s, 30, 70);
+		}
+	}
+}
+
+function newGame(goesFirst){	
+	if(goesFirst==0){
+		window.location = "lab5.php?a=-1&b=-1&c=-1&d=-1&e=-1&f=-1&g=-1&h=-1&i=-1";
+	}
+	else{
+		window.location = "lab5.php";
+	}
+}
+
+function changeMouseLis(elmt, state){
+	// Turn on or off the listeners for the div tags
+	if(state=='off'){
+		elmt.onclick = null;
+		elmt.onmouseover = null;
+		elmt.onmouseout = null;
+	}else{
+		elmt.onclick = function(event){clickDiv(event);};
+		elmt.onmouseover = function(event){onDiv(event);};
+		elmt.onmouseout = function(event){offDiv(event);};
+	}
+}
+
+function contains(a, n){
+	var aLen = a.length;	
+	for(var i = 0; i < aLen; i++) {
+		if(a[i] == n){return true;}
+	}
+	return false;
+}
+
+function clearDiv(elmt){
+	var cxt=elmt.getContext("2d");
+	elmt.width = elmt.width;
+	cxt.clearRect ( 0 , 0 , 100 , 100 );
+}
+</script>
+</head>
+<title>Lab 5 -Interactive Tic-Tac-Toe</title>
+<body onLoad="drawCurrentState(-1);drawCurrentState(checkForWinner())">
+<div id='layout'>
+<div id='header'>tic tac toe</div>
+<div id='headershdw'>tic tac toe</div>
+<div id='container'>
+<div id='bg'>
+<div id='row1'><canvas id='col1' width='100' height='100'>x</canvas>
+<div id='vline'></div>
+<canvas id='col2' width='100' height='100'>x</canvas>
+<div id='vline'></div>
+<canvas id='col3' width='100' height='100'>x</canvas></div>
+<div id='hline'></div>
+<div id='row2'><canvas id='col4' width='100' height='100'>x</canvas>
+<div id='vline'></div>
+<canvas id='col5' width='100' height='100'>x</canvas>
+<div id='vline'></div>
+<canvas id='col6' width='100' height='100'>x</canvas></div>
+<div id='hline'></div>
+<div id='row3'><canvas id='col7' width='100' height='100'>x</canvas>
+<div id='vline'></div>
+<canvas id='col8' width='100' height='100'>x</canvas>
+<div id='vline'></div>
+<canvas id='col9' width='100' height='100'>x</canvas></div>
+</div>
+</div>
+<div id='winner'>you are 'x'. make your move.</div>
+<div id='footer'>Not look right? Try the <a
+	href="lab5_no_html5.html">Non-HTML5 version</a> <br />
+<br />
+<a href="#" onClick="newGame()">Start new game</a></div>
+<div id='by'>mark becker, 2010</div>
+</div>
+</body>
+</html>
